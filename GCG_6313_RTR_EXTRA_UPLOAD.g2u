@@ -1,0 +1,239 @@
+Program.Sub.ScreenSU.Start
+Gui.FormRTRUpload..Create
+Gui.FormRTRUpload..Caption("Router 60 User Fields Update/Upload")
+Gui.FormRTRUpload..Size(8385,1515)
+Gui.FormRTRUpload..MinX(0)
+Gui.FormRTRUpload..MinY(0)
+Gui.FormRTRUpload..Position(0,0)
+Gui.FormRTRUpload..BackColor(-2147483633)
+Gui.FormRTRUpload..MousePointer(0)
+Gui.FormRTRUpload..Event(UnLoad,FormRTRUpload_UnLoad)
+Gui.FormRTRUpload.lblOrdUpload.Create(Label,"Select CSV file to Upload",True,2310,255,0,105,225,True,0,"Arial",8,-2147483633,0)
+Gui.FormRTRUpload.cmdFileBrowser.Create(Button)
+Gui.FormRTRUpload.cmdFileBrowser.Size(480,420)
+Gui.FormRTRUpload.cmdFileBrowser.Position(7530,450)
+Gui.FormRTRUpload.cmdFileBrowser.Caption("^")
+Gui.FormRTRUpload.cmdFileBrowser.Event(Click,cmdFileBrowser_Click)
+Gui.FormRTRUpload.lvw1.Create(ListView)
+Gui.FormRTRUpload.lvw1.Size(7320,390)
+Gui.FormRTRUpload.lvw1.Position(105,465)
+Gui.FormRTRUpload.lvw1.View(0)
+Gui.FormRTRUpload.lvw1.Event(OLEDragDrop,lvw1_OLEDragDrop)
+Gui.FormRTRUpload.lbl1.Create(Label,"Note** CSV File is comma delimeted so Data fields cannot contain commas",True,5625,255,0,2385,210,True,0,"Arial",8,-2147483633,0)
+Program.Sub.ScreenSU.End
+
+Program.Sub.Preflight.Start
+Program.Sub.Preflight.End
+
+Program.Sub.Main.Start
+F.Intrinsic.Control.SetErrorHandler("Main_Err")
+F.Intrinsic.Control.ClearErrors
+
+V.Local.sError.Declare(String,"")
+
+Gui.FormRTRUpload..Show
+	
+F.Intrinsic.Control.ExitSub
+
+F.Intrinsic.Control.Label("Main_Err")
+F.Intrinsic.Control.If(V.Ambient.ErrorNumber,<>,0)
+	F.Intrinsic.String.Build("Project: GCG_6313_RTR_EXTRA_UPLOAD.g2u {0}{0}Subroutine: {1}{0}Error Occurred {2} with description {3}",V.Ambient.NewLine,V.Ambient.CurrentSubroutine,V.Ambient.ErrorNumber,V.Ambient.ErrorDescription,V.Local.sError)
+	F.Intrinsic.UI.Msgbox(V.Local.sError)
+	F.Intrinsic.Control.CallSub(Exit)
+Function.Intrinsic.Control.EndIf
+Program.Sub.Main.End
+
+Program.Sub.cmdFileBrowser_Click.Start
+F.Intrinsic.Control.SetErrorHandler("Main_Err")
+F.Intrinsic.Control.ClearErrors
+
+V.Local.sError.Declare(String,"")
+V.Local.sRet.Declare(String,"")
+
+'when selecting from the browser only show csv files
+F.Intrinsic.UI.ShowOpenFileDialog("","CSV [.csv]|*.csv","",V.Local.sRet)
+
+'checking to see if a file was chosen
+F.Intrinsic.Control.If(V.Local.sRet,<>,"***CANCEL***")
+	Gui.FormRTRUpload..Visible(False)
+	'passing file location when user drops file in list view
+	F.Intrinsic.Control.CallSub(Process_Files,"Files",V.Local.sRet)
+F.Intrinsic.Control.EndIf
+	
+F.Intrinsic.Control.ExitSub
+
+F.Intrinsic.Control.Label("Main_Err")
+F.Intrinsic.Control.If(V.Ambient.ErrorNumber,<>,0)
+	F.Intrinsic.String.Build("Project: GCG_6313_RTR_EXTRA_UPLOAD.g2u {0}{0}Subroutine: {1}{0}Error Occurred {2} with description {3}",V.Ambient.NewLine,V.Ambient.CurrentSubroutine,V.Ambient.ErrorNumber,V.Ambient.ErrorDescription,V.Local.sError)
+	F.Intrinsic.UI.Msgbox(V.Local.sError)
+	F.Intrinsic.Control.CallSub(Exit)
+Function.Intrinsic.Control.EndIf
+Program.Sub.cmdFileBrowser_Click.End
+
+Program.Sub.lvw1_OLEDragDrop.Start
+F.Intrinsic.Control.SetErrorHandler("lvw1_OLEDragDrop_Err")
+F.Intrinsic.Control.ClearErrors
+
+V.Local.sError.Declare(String,"")
+
+Gui.FormRTRUpload..Visible(False)
+'passing file location when user drops file in list view
+F.Intrinsic.Control.CallSub(Process_Files,"Files",V.Args.Files)
+	
+F.Intrinsic.Control.ExitSub
+
+F.Intrinsic.Control.Label("lvw1_OLEDragDrop_Err")
+F.Intrinsic.Control.If(V.Ambient.ErrorNumber,<>,0)
+	F.Intrinsic.String.Build("Project: GCG_6313_RTR_EXTRA_UPLOAD.g2u {0}{0}Subroutine: {1}{0}Error Occurred {2} with description {3}",V.Ambient.NewLine,V.Ambient.CurrentSubroutine,V.Ambient.ErrorNumber,V.Ambient.ErrorDescription,V.Local.sError)
+	F.Intrinsic.UI.Msgbox(V.Local.sError)
+	F.Intrinsic.Control.CallSub(Exit)
+Function.Intrinsic.Control.EndIf
+Program.Sub.lvw1_OLEDragDrop.End
+
+Program.Sub.Process_Files.Start
+F.Intrinsic.Control.SetErrorHandler("Process_Files_Err")
+F.Intrinsic.Control.ClearErrors
+
+V.Local.sError.Declare(String,"")
+V.Local.i.Declare(Long,0)
+V.Local.sFiles.Declare(String,"")
+V.Local.sMsg.Declare(String,"")
+V.Local.sFileType.Declare(String,"")
+V.Local.sFileContent.Declare(String,"")
+
+F.Intrinsic.UI.InvokeWaitDialog("Parsing File.......................")
+'listview allows multlipe files to be droped in
+'spliting the argument to process each file seperately
+F.Intrinsic.String.Split(V.Args.Files,"*!*",V.Local.sFiles)
+
+'looping through file liist
+F.Intrinsic.Control.For(V.Local.i,0,V.Local.sFiles.UBound,1)	
+	V.Local.sFileType.Set(V.Local.sFiles(V.Local.i).Right3)
+	F.Intrinsic.Control.If(V.Local.sFileType.UCase,=,"CSV")
+		F.Intrinsic.File.File2String(V.Local.sFiles(V.Local.i),V.Local.sFileContent)
+		F.Intrinsic.Control.If(V.Local.sFileContent.Length,>,0)
+			'calling parse file to convert to a gss format csv file
+			F.Intrinsic.Control.CallSub(Parse_File,"File",V.Local.sFileContent,"FileName",V.Local.sFiles(V.Local.i))
+			F.Intrinsic.UI.CloseWaitDialog
+		F.Intrinsic.Control.EndIf
+	F.Intrinsic.Control.Else
+		'letting user know that the file choosen was not a csv
+		F.Intrinsic.String.Build("{0} file must be a CSV to be processed",V.Local.sFiles(V.Local.i),V.Local.sMsg)
+		F.Intrinsic.UI.Msgbox(V.Local.sMsg,"Attention")
+		F.Intrinsic.UI.CloseWaitDialog
+		Gui.FormRTRUpload..Show
+	F.Intrinsic.Control.EndIf
+F.Intrinsic.Control.Next(V.Local.i)
+	
+F.Intrinsic.UI.CloseWaitDialog
+
+Gui.FormRTRUpload..Show
+
+F.Intrinsic.Control.ExitSub
+
+F.Intrinsic.Control.Label("Process_Files_Err")
+F.Intrinsic.Control.If(V.Ambient.ErrorNumber,<>,0)
+	F.Intrinsic.String.Build("Project: GCG_6313_RTR_EXTRA_UPLOAD.g2u {0}{0}Subroutine: {1}{0}Error Occurred {2} with description {3}",V.Ambient.NewLine,V.Ambient.CurrentSubroutine,V.Ambient.ErrorNumber,V.Ambient.ErrorDescription,V.Local.sError)
+	F.Intrinsic.UI.Msgbox(V.Local.sError)
+	F.Intrinsic.Control.CallSub(Exit)
+Function.Intrinsic.Control.EndIf
+Program.Sub.Process_Files.End
+
+Program.Sub.Parse_File.Start
+F.Intrinsic.Control.SetErrorHandler("Parse_File_Err")
+F.Intrinsic.Control.ClearErrors
+
+V.Local.sError.Declare(String,"")
+V.Local.sFields.Declare(String,"")
+V.Local.i.Declare(Long,0)
+V.Local.sMap.Declare(String,"")
+V.Local.sTypes.Declare(String,"")
+V.Local.sTemp.Declare(String,"")
+
+V.Local.sFields.Set("ROUTER*!*REV")
+V.Local.sMap.Set("ROUTER@!@ROUTER*!*REV@!@REV")
+V.Local.sTypes.Set("String*!*String")
+
+F.Intrinsic.Control.For(V.Local.i,1,60,1)
+	F.Intrinsic.String.Build("{0}*!*USER{1}",V.Local.sFields,V.Local.i,V.Local.sFields)
+	F.Intrinsic.String.Build("{0}*!*USER{1}@!@USER{1}",V.Local.sMap,V.Local.i,V.Local.sMap)
+	F.Intrinsic.String.Build("{0}*!*String",V.Local.sTypes,V.Local.sTypes)
+F.Intrinsic.Control.Next(V.Local.i)
+
+F.Data.DataTable.CreateFromString("Extra",V.Args.File,V.Local.sFields,V.Local.sTypes,",",V.Ambient.NewLine,True)
+F.Intrinsic.Control.If(V.DataTable.Extra.RowCount--,<>,-1)
+	V.Local.sTemp.Set(V.DataTable.Extra(0).Router!FieldValTrim)
+	F.Intrinsic.Control.If(V.Local.sTemp.UCase,=,"ROUTER")
+		F.Data.DataTable.DeleteRow("Extra",0)
+		F.Data.DataTable.AcceptChanges("Extra")
+	F.Intrinsic.Control.EndIf
+	F.Intrinsic.Control.If(V.DataTable.Extra.RowCount--,<>,-1)
+		F.Data.DataView.Create("Extra","Temp",22,"Rev = '' or Rev is Null","")
+		F.Intrinsic.Control.If(V.DataView.Extra!Temp.RowCount--,<>,-1)
+			F.Data.DataView.SetValue("Extra","Temp",-1,"Rev"," ")
+		F.Intrinsic.Control.EndIf
+		F.Data.DataView.Close("Extra","Temp")
+		F.Intrinsic.Control.For(V.Local.i,1,60,1)
+			F.Intrinsic.String.Build("User{0} = '' or User{0} is Null",V.Local.i,V.Local.sTemp)
+			F.Data.DataView.Create("Extra","Temp",22,V.Local.sTemp,"")
+			F.Intrinsic.Control.If(V.DataView.Extra!Temp.RowCount--,<>,-1)
+				F.Intrinsic.String.Build("User{0}",V.Local.i,V.Local.sTemp)
+				F.Data.DataView.SetValue("Extra","Temp",-1,V.Local.sTemp," ")
+			F.Intrinsic.Control.EndIf
+			F.Data.DataView.Close("Extra","Temp")
+		F.Intrinsic.Control.Next(V.Local.i)
+		F.ODBC.Connection!con.OpenCompanyConnection
+		F.Data.DataTable.SaveToDB("Extra","con","GCG_6313_RTR_EXTRA","ROUTER*!*REV",256,V.Local.sMap)
+		F.ODBC.Connection!con.Close
+	F.Intrinsic.Control.EndIf
+F.Intrinsic.Control.EndIf
+
+F.Data.DataTable.Close("Extra")
+
+F.Intrinsic.Control.ExitSub
+
+F.Intrinsic.Control.Label("Parse_File_Err")
+F.Intrinsic.Control.If(V.Ambient.ErrorNumber,<>,0)
+	F.Intrinsic.String.Build("Project: GCG_6313_RTR_EXTRA_UPLOAD.g2u {0}{0}Subroutine: {1}{0}Error Occurred {2} with description {3}",V.Ambient.NewLine,V.Ambient.CurrentSubroutine,V.Ambient.ErrorNumber,V.Ambient.ErrorDescription,V.Local.sError)
+	F.Intrinsic.UI.Msgbox(V.Local.sError)
+	F.Intrinsic.Control.CallSub(Exit)
+Function.Intrinsic.Control.EndIf
+Program.Sub.Parse_File.End
+
+Program.Sub.Exit.Start
+F.Intrinsic.Control.SetErrorHandler("Exit_Err")
+F.Intrinsic.Control.ClearErrors
+
+V.Local.sError.Declare(String,"")
+
+F.Intrinsic.Control.If(V.ODBC.Con.State,=,1)
+	F.ODBC.Connection!Con.Close
+F.Intrinsic.Control.EndIf
+
+F.Intrinsic.Control.End
+
+F.Intrinsic.Control.ExitSub
+
+F.Intrinsic.Control.Label("Exit_Err")
+F.Intrinsic.Control.If(V.Ambient.ErrorNumber,<>,0)
+	F.Intrinsic.Control.End
+Function.Intrinsic.Control.EndIf
+Program.Sub.Exit.End
+
+Program.Sub.FormRTRUpload_UnLoad.Start
+F.Intrinsic.Control.SetErrorHandler("FormRTRUpload_UnLoad_Err")
+F.Intrinsic.Control.ClearErrors
+
+V.Local.sError.Declare(String,"")
+
+f.Intrinsic.Control.End
+
+F.Intrinsic.Control.ExitSub
+
+F.Intrinsic.Control.Label("FormRTRUpload_UnLoad_Err")
+F.Intrinsic.Control.If(V.Ambient.ErrorNumber,<>,0)
+	F.Intrinsic.String.Build("Project: GCG_6313_RTR_EXTRA_UPLOAD.g2u {0}{0}Subroutine: {1}{0}Error Occurred {2} with description {3}",V.Ambient.NewLine,V.Ambient.CurrentSubroutine,V.Ambient.ErrorNumber,V.Ambient.ErrorDescription,V.Local.sError)
+	F.Intrinsic.UI.Msgbox(V.Local.sError)
+	F.Intrinsic.Control.CallSub(Exit)
+Function.Intrinsic.Control.EndIf
+Program.Sub.FormRTRUpload_UnLoad.End
